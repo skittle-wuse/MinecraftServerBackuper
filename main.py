@@ -10,7 +10,6 @@ CONFIG_FILE = "s3_config.ini"
 
 
 def calculate_md5(file_path):
-    """计算文件的MD5哈希值"""
     hash_md5 = hashlib.md5()
     try:
         with open(file_path, "rb") as f:
@@ -23,7 +22,6 @@ def calculate_md5(file_path):
 
 
 def save_config(endpoint, access_key, secret_key, bucket, prefix):
-    """保存配置到文件"""
     config = configparser.ConfigParser()
     config["S3"] = {
         "endpoint": endpoint,
@@ -38,7 +36,6 @@ def save_config(endpoint, access_key, secret_key, bucket, prefix):
 
 
 def load_config():
-    """从文件加载配置"""
     if not os.path.exists(CONFIG_FILE):
         return None
 
@@ -51,12 +48,11 @@ def load_config():
         "access_key": s3_section["access_key"],
         "secret_key": s3_section["secret_key"],
         "bucket": s3_section["bucket"],
-        "prefix": s3_section.get("prefix", "")  # 处理旧版配置可能没有prefix的情况
+        "prefix": s3_section.get("prefix", "")  
     }
 
 
 def interactive_setup():
-    """交互式配置模式"""
     print("=" * 50)
     print("上传配置工具")
     print("=" * 50)
@@ -65,12 +61,10 @@ def interactive_setup():
     secret_key = input("3. Secret Key: ").strip()
     bucket = input("4. 存储桶名称: ").strip()
 
-    # 询问是否要创建特定文件夹
     create_folder = input("\n是否要在云端创建特定文件夹保存文件? (y/n): ").strip().lower()
     prefix = ""
     if create_folder in ['y', 'yes']:
         folder_name = input("请输入文件夹名称: ").strip()
-        # 规范化文件夹名称（移除首尾空格和斜杠）
         folder_name = folder_name.strip().strip("/")
         if folder_name:
             prefix = f"{folder_name}/"
@@ -86,12 +80,10 @@ def interactive_setup():
 
 
 def get_relative_path(file_path, base_dir):
-    """获取文件相对于基目录的路径"""
     return os.path.relpath(file_path, base_dir).replace("\\", "/")
 
 
 def find_files_to_upload(base_dir):
-    """查找所有需要上传的文件"""
     files_to_upload = []
     self_name = os.path.basename(sys.argv[0])
 
@@ -100,7 +92,6 @@ def find_files_to_upload(base_dir):
             file_path = os.path.join(root, file)
             relative_path = get_relative_path(file_path, base_dir)
 
-            # 排除配置文件和程序自身
             if relative_path == CONFIG_FILE:
                 continue
             if relative_path.endswith(".exe") and relative_path.lower() == self_name.lower():
@@ -112,7 +103,6 @@ def find_files_to_upload(base_dir):
 
 
 def upload_files():
-    """上传文件到S3存储桶，包括子目录"""
     print("正在加载配置...")
     config = load_config()
     if not config:
@@ -125,7 +115,7 @@ def upload_files():
             config["endpoint"],
             access_key=config["access_key"],
             secret_key=config["secret_key"],
-            secure=True  # 使用HTTPS
+            secure=True  # 使用HTTPS,我是懒人我还没搞变量，没有多少时间...
         )
     except Exception as e:
         print(f"连接失败: {str(e)}")
@@ -134,7 +124,6 @@ def upload_files():
     bucket_name = config["bucket"]
     prefix = config.get("prefix", "")
 
-    # 验证存储桶是否存在
     try:
         if not client.bucket_exists(bucket_name):
             print(f"错误: 存储桶 '{bucket_name}' 不存在")
@@ -161,14 +150,12 @@ def upload_files():
     errors = 0
 
     for file_path, relative_path in files_to_upload:
-        # 添加前缀到对象名称
         object_name = prefix + relative_path if prefix else relative_path
 
         print(f"\n处理文件: {relative_path}")
         if prefix:
             print(f"云端路径: {object_name}")
 
-        # 计算本地文件MD5
         local_md5 = calculate_md5(file_path)
         if local_md5 is None:
             print("错误: 无法计算MD5，跳过此文件")
@@ -178,7 +165,6 @@ def upload_files():
         print(f"本地文件MD5: {local_md5}")
 
         try:
-            # 获取远程对象信息
             obj_info = client.stat_object(bucket_name, object_name)
             remote_md5 = obj_info.etag.strip('"')
             print(f"云端文件MD5: {remote_md5}")
@@ -197,7 +183,6 @@ def upload_files():
                 errors += 1
                 continue
 
-        # 执行文件上传
         print(f"上传中: {relative_path} -> {bucket_name}/{object_name}")
         try:
             client.fput_object(
